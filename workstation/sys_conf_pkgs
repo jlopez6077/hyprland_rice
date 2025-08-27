@@ -1,0 +1,104 @@
+#!/bin/bash
+# ~/.dotfiles/workstation/sys_config_pkgs
+
+# Configures system settings
+
+FILE_DIR="$(dirname "$(readlink -f "$0")")"
+source "$FILE_DIR/../functions"
+
+set -e
+log_script_start
+
+laptop_pkg_list=(
+    tlp
+    tlp-rdw
+    powertop
+)
+
+echo "Changing Font"
+install_if_missing terminus-font
+if [[ "$(tty)" =~ /dev/tty[0-9]+ ]]; then
+    echo "setfont ter-i24b.psf.gz"
+    setfont ter-i24b.psf.gz
+fi
+echo "Do you want to change this to your default tty font"
+confirm_line_to_config "FONT=ter-i24b.psf.gz" "/etc/vconsole.conf" 
+echo
+
+KEYMAP_DIR="/usr/share/kbd/keymaps/custom"
+CAPS_LOCK_LINE="keycode  58 = Caps_Lock       "
+read -n1 -rep "Do you want remap CapsLock to Ctrl? (Y/n): " CTRL_REMAP
+if [[ "$CTRL_REMAP" == "y" || "$CTRL_REMAP" == "Y" ]]; then
+    sudo mkdir -p $KEYMAP_DIR 
+    sudo dumpkeys | sudo tee "$KEYMAP_DIR/caps_as_ctrl.map" > /dev/null
+    if grep -qxF "$CAPS_LOCK_LINE" "$KEYMAP_DIR/caps_as_ctrl.map"; then
+        add_line_to_config "keycode  58 = Control       " "$KEYMAP_DIR/caps_as_ctrl.map" "keycode  58 = Caps_Lock       "
+        remove_string_from_file "$CAPS_LOCK_LINE" "$KEYMAP_DIR/caps_as_ctrl.map"
+    fi
+    add_line_to_config "KEYMAP=custom/caps_as_ctrl" "/etc/vconsole.conf" "KEYMAP=us"
+fi
+echo
+
+install_if_missing networkmanager
+read -n1 -rep "Do you want to Disable WIFI Powersave? This will improve WIFI Reliability. (Y/n): " WIFI_POWERSAVE 
+if [[ "$WIFI_POWERSAVE" == "y" || "$WIFI_POWERSAVE" == "Y" ]]; then
+    WIFI_DISABLE_LINE1="[connection]"
+    WIFI_DISABLE_LINE2="wifi.powersave = 2"
+    WIFI_POWERSAVE_LOC="/etc/NetworkManager/conf.d/wifi-powersave.conf"
+    add_line_to_config "$WIFI_DISABLE_LINE1" "$WIFI_POWERSAVE_LOC"
+    add_line_to_config "$WIFI_DISABLE_LINE2" "$WIFI_POWERSAVE_LOC" "$WIFI_DISABLE_LINE1"
+fi
+echo
+
+read -n1 -rep "Do you want to replace wpa_supplicant with iwd? (Y/n): " IWD_REPLACE
+if [[ "$IWD_REPLACE" == "y" || "$IWD_REPLACE" == "Y" ]]; then
+    install_if_missing iwd
+    NMCL_BACKEND="/etc/NetworkManager/conf.d/wifi_backend.conf"
+    add_line_to_config "[device]" "$NMCL_BACKEND"
+    add_line_to_config "wifi.backend=iwd" "$NMCL_BACKEND" "[device]"
+    echo "Restarting NetworkManager..."
+    sudo systemctl restart NetworkManager
+    sleep 3
+fi
+echo
+
+read -n1 -rep 'Would you like to start Bluetooth Service? (Y,n): ' BLUE
+if [[ $BLUE == "Y" || $BLUE == "y" ]] then
+    sudo systemctl enable --now bluetooth.service
+    echo "Would you like Bluetooth to be autodisabled"
+    confirm_line_to_config "AutoEnable=false" "/etc/bluetooth/main.conf" "# AutoEnable=true"
+fi
+echo
+
+read -n1 -rep "Do you want to Sync Network Time Protocol to America/Los_Angeles? (Y/n): " SYNC_TIME
+if [[ "$SYNC_TIME" == "y" || "$SYNC_TIME" == "Y" ]] then
+    sudo systemctl enable --now systemd-timesyncd.service
+    echo "Syncing timedatectl with America/Los_Angeles"
+    sudo timedatectl set-timezone America/Los_Angeles
+    sudo timedatectl set-ntp true
+fi
+echo
+
+read -n1 -rep 'Are you dual booting Windows? (Y,n): ' WIND
+if [[ $WIND == "Y" || $WIND == "y" ]] then
+    sudo timedatectl set-local-rtc 1
+fi
+echo
+
+
+if [[ $PLATFORM == "laptop" ]]; then
+    read -n1 -rep 'Do you want to install/enable Power Managment packages? (Y,n): ' PM_PKGS
+    if [[ $PM_PKGS == "y" || $PM_PKGS == "Y" ]] then
+        install_all_if_missing laptop_pkg_list
+        echo
+        echo "Enabling tlp.services..."
+        install_if_missing tlp
+        install_if_missing tlp-rdw
+        sudo systemctl enable --now tlp.service
+        sudo systemctl start tlp.service
+        sudo systemctl mask systemd-rfkill.service systemd-rfkill.socket
+    fi
+fi
+echo
+
+log_script_end

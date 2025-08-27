@@ -1,0 +1,68 @@
+#!/bin/bash
+# ~/.dotfiles/workstation/hyprland_install
+
+# Hyprland Compositor Configuration Suite
+# Deploys Hyprland with integrated theming, window management rules,
+# status bar configuration, and essential desktop utilities.
+
+FILE_DIR="$(dirname "$(readlink -f "$0")")"
+source "$FILE_DIR/../functions"
+
+LINKFILES_DIR="$FILE_DIR/configs/hyprland"
+
+set -e
+log_script_start
+
+hypr_pkg_list=(
+    hyprland
+    kitty
+    waybar
+    swaybg
+    wofi
+    cliphist
+    wl-clipboard
+    mako
+    thunar
+    ttf-jetbrains-mono-nerd
+    noto-fonts-emoji
+    polkit-gnome
+    python-requests
+    starship
+    swappy
+    grim
+    slurp
+    pamixer
+    brightnessctl
+    gvfs
+    bluez
+    bluez-utils
+    lxappearance
+    xfce4-settings
+    brave-bin
+    xdg-desktop-portal-hyprland
+)
+
+hypr_yay_list=(
+    swaylock-effects
+    wlogout
+    dracula-gtk-theme
+    dracula-icons-git
+)
+
+install_all_if_missing hypr_pkg_list
+install_all_yay_if_missing hypr_yay_list
+
+declare -A CONFIG_FILES=(
+    ["kitty"]="$LINKFILES_DIR/kitty"
+    ["starship.toml"]="$LINKFILES_DIR/starship.toml"
+    ["mako"]="$LINKFILES_DIR/mako"
+    ["wofi"]="$LINKFILES_DIR/wofi"
+    ["waybar"]="$LINKFILES_DIR/waybar"
+    ["swaylock"]="$LINKFILES_DIR/swaylock"
+    ["hypr"]="$LINKFILES_DIR/hypr"
+    ["gtk-2.0"]="$LINKFILES_DIR/gtk-2.0"
+)
+
+link_files CONFIG_FILES ~/.config/
+
+log_script_end

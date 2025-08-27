@@ -1,0 +1,94 @@
+#!/bin/bash
+# ~/.dotfiles/workstation/basic_pkgs
+
+# Installs the most basic of packages needed for any workstation
+# This script also differentiates between Laptop and Desktop
+FILE_DIR="$(dirname "$(readlink -f "$0")")"
+source "$FILE_DIR/../functions"
+
+LINKFILES_DIR="$FILE_DIR/configs/basic"
+
+set -e
+
+# echo "Starting pkg_basic.sh"
+log_script_start
+
+required_pkg_list=(
+    # Require Applications
+    base-devel
+    dosfstools
+    grub
+    efibootmgr
+    mtools
+    networkmanager
+    openssh
+    os-prober
+    linux-headers
+    linux-firmware
+    neovim
+    tmux
+    git
+    terminus-font	
+    pipewire-pulse  # newer multimedia framework
+    pamixer         # command-line tool for controlling audio
+    pavucontrol     # GUI to manage all audio devices
+    powertop    # Diagnostic tool for power consumption
+)
+echo
+
+#required_laptop_pkg_list=(
+#    tlp         # Power management tool for extending battery power
+#    tlp-rdw     # TLP Radio Device Wizard - manages Bluetooth, Wifi and WWAN
+#)
+
+install_all_if_missing required_pkg_list
+
+# Get graphics card input from the user
+echo "This script will help install the necessary graphics drivers for Arch Linux."
+read -p "Please enter your graphics card type (nvidia, amd, or intel): " graphics_card
+graphics_card=$(echo "$graphics_card" | tr '[:upper:]' '[:lower:]') # Convert input to lowercase
+
+case "$graphics_card" in
+    "amd")
+        echo "Installing AMD open-source drivers (Mesa)..."
+        install_if_missing mesa
+        install_if_missing libva-mesa-driver
+        ;;
+    "nvidia")
+        echo "The script doesn't have the drivers for this graphics card"
+        exit 1
+        ;;
+    "intel")
+        echo "The script doesn't have the drivers for this graphics card"
+        exit 1
+        ;;
+    *)
+        echo "Invalid input. Please enter 'nvidia', 'amd', or 'intel'."
+        exit 1
+        ;;
+esac
+echo "Driver installation is complete."
+
+echo
+#read -n1 -rep 'Are you on a laptop? (Y,n): ' LAPTOP
+#if [[ $LAPTOP == "Y" || $LAPTOP == "y" ]]; then
+#    echo "Installing Power Managment packages..."
+#    install_all_if_missing required_laptop_pkg_list
+#fi
+
+declare -A CONFIG_FILES=(
+    ["nvim"]="$LINKFILES_DIR/nvim" 
+    ["tmux"]="$LINKFILES_DIR/tmux"
+    ["pavucontrol.ini"]="$LINKFILES_DIR/pavucontrol.ini"
+)
+declare -A SYSTEM_CONFIGS=(
+    [".bash_logout"]="$LINKFILES_DIR/.bash_logout"
+    [".bashrc"]="$LINKFILES_DIR/.bashrc"
+    [".bash_profile"]="$LINKFILES_DIR/.bash_profile"
+    [".gitconfig"]="$LINKFILES_DIR/.gitconfig"
+)
+
+link_files CONFIG_FILES ~/.config/
+link_files SYSTEM_CONFIGS ~/
+
+log_script_end

@@ -1,0 +1,202 @@
+#!/bin/bash
+# .dotfiles/install_scripts/functions
+
+log_script_start(){
+    local script_name="${BASH_SOURCE[1]}"
+    echo
+    echo "================================================================================"
+    echo "  STARTING SCRIPT: $script_name"
+    echo "================================================================================"
+    echo
+}
+
+log_script_end(){
+    local script_name="${BASH_SOURCE[1]}"
+    echo
+    echo "================================================================================"
+    echo "  ENDING SCRIPT: $script_name"
+    echo "================================================================================"
+    echo
+}
+
+install_if_missing(){
+    local pkg="$1"
+
+    if pacman -Qi "$pkg" &>/dev/null; then
+        echo "$pkg already installed"
+    else
+        echo "Installing $pkg" | sudo pacman -S --noconfirm "$pkg"
+    fi
+}
+
+install_all_if_missing(){
+    local array_name="$1"
+    local -n pkgs="$array_name"
+
+    echo "Installing $array_name"
+    for pkg in "${pkgs[@]}"; do
+        install_if_missing "$pkg"
+    done
+    echo
+}
+
+install_all_yay_if_missing(){
+    local array_name="$1"
+    local -n pkgs="$array_name"
+    
+    echo "Installing $array_name"
+    for pkg in "${pkgs[@]}"; do
+        install_yay_if_missing "$pkg"
+    done
+    echo
+}
+
+install_yay_if_missing(){
+    local pkg="$1"
+
+    if pacman -Qi "$pkg" &>/dev/null; then
+        echo "$pkg already installed"
+    else
+        echo "Installing $pkg" | yay -S --noconfirm "$pkg"
+    fi
+}
+
+confirm_line_to_config(){
+
+    local line_to_add="$1"
+    local file_path="$2"
+    local after_line="$3"
+
+    read -n1 -rep "by adding '$line_to_add' to '$file_path'? (Y,n): " confirm_add
+
+    if [[ "$confirm_add" == "y" || "$confirm_add" == "Y" ]]; then
+        add_line_to_config "$line_to_add" "$file_path" "$after_line"
+    fi
+}
+
+add_line_to_config() {
+    local line_to_add="$1"
+    local file_path="$2"
+    local after_line="$3"
+
+    if [[ ! -f "$file_path" ]]; then
+        echo "Error: Failed to add '$line_to_add'. File '$file_path' not found."
+        return 1
+    fi
+
+    if grep -qxF "$line_to_add" "$file_path"; then
+        echo "Line '$line_to_add' already exists in '$file_path'"
+    else 
+        if [[ -n "$after_line" ]]; then 
+            if ! grep -qxF "$after_line" "$file_path"; then
+                echo "Line '$safe_after_line' could not be found"
+                return 1
+            fi
+        fi
+
+        local backup_dir="$(dirname "$file_path")/.archived_config_files"
+        sudo mkdir -p "$backup_dir"
+
+        local timestamp=$(date +"%Y_%m_%d_%H%M%S")
+        local filename=$(basename "$file_path")
+        local backup_file="$backup_dir/$filename.$timestamp.bak"
+
+        if [[ ! -f "$backup_file" ]]; then
+            sudo cp "$file_path" "$backup_file"
+            echo "Backup created at: $backup_file"
+        fi
+
+        # Check if the optional third parameter is provided
+        if [[ -n "$after_line" ]]; then 
+            safe_after_line=$(printf '%s\n' "$after_line" | sed 's/[.[\*^$/]/\\&/g')
+            sudo sed -i "/^$safe_after_line/a\\"$'\n'"$line_to_add" "$file_path"
+            echo "'$line_to_add' successfully added after '$after_line' in '$file_path'"
+        else
+            echo "$line_to_add" | sudo tee -a "$file_path" > /dev/null
+            echo "Line successfully added to '$file_path'"
+        fi
+    fi
+}
+
+remove_string_from_file(){
+    local target_string="$1"
+    local target_file="$2"
+
+    if [[ ! -f "$target_file" ]]; then
+        echo "Error: File '$target_file' not found."
+        return 1
+    fi
+
+    if grep -qxF "$target_string" "$target_file"; then
+        local backup_dir="$(dirname "$target_file")/.archived_config_files"
+        sudo mkdir -p "$backup_dir"
+
+        local timestamp=$(date +"%Y_%m_%d_%H%M%S")
+        local filename=$(basename "$target_file")
+        local backup_file="$backup_dir/$filename.$timestamp.bak"
+        if [[ ! -f "$backup_file" ]]; then
+            sudo cp "$target_file" "$backup_file"
+            echo "Backup created at: $backup_file"
+        fi
+       
+        local safe_string=$(printf '%s\n' "$target_string" | sed 's/[.[\*^$/]/\\&/g')
+        sed -i "s/${safe_string}//g" "$target_file"
+        echo "Removed all occurrences of '$target_string' from $target_file"
+
+    else
+        echo "String '$target_string' not found in '$target_file'."
+    fi
+}
+
+link_files(){
+    local -n files_array=$1
+    local dest_dir=$2
+
+    local backup_dir="$dest_dir/.archived_config_files"
+
+    echo "Starting file linking process..."
+
+    if [[ ! -d "$dest_dir" ]]; then
+        echo "Error: Failed to link '$files_array'. Directory '$dest_dir' not found."
+        return 1
+    fi
+
+    for TARGET in "${!files_array[@]}"; do
+        local SOURCE="${files_array[$TARGET]}"
+        local DEST="$dest_dir/$TARGET"
+        
+        # Check if the source file or directory exists.
+        if [[ ! -e "$SOURCE" ]]; then
+            echo "Error: Source file '$SOURCE' not found."
+            return 1
+        fi
+
+        # check if the $DEST exisit
+        if [[ -e "$DEST" ]]; then
+            echo "File '$TARGET' already exisits in '$dest_dir'" 
+
+            # Check to see if the file is already linked to $SOURCE
+            if [[ "$(readlink -f "$DEST")" == "$(readlink -f "$SOURCE")" ]]; then
+                echo "File '$TARGET' is already linked to '$SOURCE'"
+            else
+                # Make backup
+                mkdir -p "$backup_dir"
+               
+                local timestamp=$(date +"%Y_%m_%d_%H%M%S")
+                local filename=$(basename "$DEST")
+                local backup_file="$backup_dir/$filename.$timestamp.bak"
+
+                mv "$DEST" "$backup_file"
+                echo "Backup created at: $backup_file"
+
+                # link file
+                ln -s "$SOURCE" "$DEST"
+                echo "Linked $TARGET -> $SOURCE"
+            fi
+        else
+            ln -s "$SOURCE" "$DEST"
+            echo "Linked $TARGET -> $SOURCE"
+        fi
+    done
+    echo
+}    

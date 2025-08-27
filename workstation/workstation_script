@@ -1,0 +1,39 @@
+#!/bin/bash
+# ~/.dotfiles/workstation/workstation_script
+
+# Installs my Archlinux workstation setup
+
+FILE_DIR="$(dirname "$(readlink -f "$0")")"
+source "$FILE_DIR/../functions"
+
+export PLATFORM
+
+set -e
+
+log_script_start
+
+echo "Checking to see if yay is installed..."
+if ! command -v yay &> /dev/null; then
+    eche "Yay is not installed. Installing yay..."
+    git clone https://aur.archlinux.org/yay.git /opt
+    cd /opt || exit
+    makepkg -si --noconfirm
+else
+    echo "Yay is installed!"
+fi
+
+echo
+read -p "Please enter your platform (desktop, laptop): " PLATFORM
+PLATFORM=$(echo "$PLATFORM" | tr '[:upper:]' '[:lower:]')
+if [[ $PLATFORM != "desktop" && $PLATFORM != "laptop" ]]; then
+    echo "Error: invalid response"
+    return 1
+fi
+
+$FILE_DIR/basic_pkgs
+$FILE_DIR/sys_conf_pkgs
+$FILE_DIR/hyprland_pkgs
+$FILE_DIR/optional_pkgs
+
+
+log_script_end

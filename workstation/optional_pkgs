@@ -1,0 +1,31 @@
+#!/bin/bash
+# ~/.dotfiles/workstation/optional_pkgs
+
+# Installs the optional packages
+
+source "$(dirname "$0")/../functions"
+DOTFILES_DIR="$(dirname "$0")/configs/optional"
+
+
+set -e
+
+log_script_start
+
+declare -p optional_pkg=(
+    fastfetch
+    cowsay
+    cmatrix
+    cava
+)
+declare -A CONFIG_FILES=(
+    ["cava"]="$DOTFILES_DIR/cava"
+)
+read -n1 -rep "Do you want to install the optional packages above? (Y/n): " OPTIONAL;
+if [[ "$OPTIONAL" == "y" || "$OPTIONAL" == "Y" ]] then
+    install_all_if_missing optional_pkg
+    link_files CONFIG_FILES ~/.config/
+fi
+
+
+
+log_script_end
