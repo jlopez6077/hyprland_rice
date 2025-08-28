@@ -7,7 +7,7 @@ My personal Hyprland setup and configuration files, packaged as an automated ins
 I decided that to learn Linux, I was going to install Arch. What started as a simple desktop setup quickly became an obsession with customization!
 The configuration files are largely based on blank. I started with installing the packages I wanted and then Hyprland. I then found myself putting a lot of effort into customizing this setup.
 I thought to myself, "What if my computer blows up and I have to do all of this over again?!" Well, that led me into the Linux rabbit hole!
-I started coding up bash scripts as a way to document my progress, and now I'm here posting my rice. This is just part one - there is still so much I want to customize, however I must move on to part 2 projects.
+I started coding up bash scripts as a way to document my progress, and now I'm here posting my rice. This is just part one - there is still so much I want to improve.
 Note: This installer specifically handles the Hyprland configuration and related dotfiles, not a complete system setup.
 If you're interested in following my Linux journey, connect with me on LinkedIn!
 
@@ -15,9 +15,6 @@ If you're interested in following my Linux journey, connect with me on LinkedIn!
 
 - [ ] Add more software relating to workflow
 - [ ] Improve Bash Programming Pratices through functions
-- [ ] Add more Waybar functionalites
-- [ ] Multiple theme options
-- [ ] Gaming optimizations
 
 
 ## 📸 Screenshots
@@ -39,8 +36,8 @@ If you're interested in following my Linux journey, connect with me on LinkedIn!
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/jlopez6077/hyprland-rice-installer.git
-cd hyprland-rice-installer
+git clone https://github.com/jlopez6077/hyprland-rice.git
+cd hyprland-rice
 ```
 
 2. Make the script executable:
